@@ -1,8 +1,8 @@
 /**
- * Txpple's Combat Enhancements — quality-of-life combat automation.
+ * Combat Plus — quality-of-life combat automation.
  *
  * Five independent features, each behind its own world setting (Game Settings → Configure
- * Settings → Txpple's Combat Enhancements):
+ * Settings → Combat Plus):
  *
  *   - Combat Music: when combat starts, whatever is currently playing is snapshotted and
  *     silenced, and the configured combat playlist (or a single track from it) starts. When
@@ -27,8 +27,8 @@
  * clients has shifted between core versions.
  */
 
-const MODULE_ID = "fvtt-mod-txpplecombat";
-const TITLE = "Txpple's Combat Enhancements";
+const MODULE_ID = "fvtt-mod-combatplus";
+const TITLE = "Combat Plus";
 
 /** Setting keys. */
 const S = {
@@ -96,7 +96,7 @@ async function stopCombatMusic() {
 
 class CombatMusicConfig extends foundry.applications.api.ApplicationV2 {
   static DEFAULT_OPTIONS = {
-    id: "txpplecombat-music-config",
+    id: "combatplus-music-config",
     tag: "form",
     window: { title: "Combat Music", icon: "fa-solid fa-music", contentClasses: ["standard-form"] },
     position: { width: 480, height: "auto" },

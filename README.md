@@ -1,7 +1,7 @@
-# Txpple's Combat Enhancements
+# Combat Plus
 
 Quality-of-life combat automation for Foundry VTT. Five independent features, each behind its
-own checkbox in **Game Settings → Configure Settings → Txpple's Combat Enhancements**:
+own checkbox in **Game Settings → Configure Settings → Combat Plus**:
 
 - **Combat Music** — when combat starts, whatever is playing is snapshotted and silenced, and
   the configured combat playlist (or a single track from it) starts. When the fight ends, the
@@ -32,10 +32,11 @@ Compatibility: Foundry v13+ (verified on v14).
 
 ## Installation
 
-This repository is **private**, so Foundry cannot fetch the manifest URL directly. Install by
-zip instead: grab `fvtt-mod-txpplecombat.zip` from the latest GitHub release and either use
-Foundry's *Install Module → local file* path or unpack it into the server's
-`Data/modules/fvtt-mod-txpplecombat/` (e.g. over WebDAV for hosted worlds).
+Install via manifest URL:
+
+```
+https://github.com/Txpple/fvtt-mod-combatplus/releases/latest/download/module.json
+```
 
 ## License
 

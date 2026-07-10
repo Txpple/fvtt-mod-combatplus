@@ -1,6 +1,6 @@
 {
-  "id": "fvtt-mod-txpplecombat",
-  "title": "Txpple's Combat Enhancements",
+  "id": "fvtt-mod-combatplus",
+  "title": "Combat Plus",
   "description": "Quality-of-life combat automation: combat music that starts with the fight and hands back to whatever was playing before, an initiative gate that stops combat from beginning until everyone has rolled, automatic target clearing when your turn ends, and pan/select of the active combatant's token for its owner. Works entirely through document-level combat hooks, so it is compatible with replacement trackers such as Carousel Combat Tracker.",
   "version": "1.0.0",
   "authors": [
@@ -9,15 +9,15 @@
     }
   ],
   "esmodules": [
-    "scripts/txpplecombat.js"
+    "scripts/combatplus.js"
   ],
   "compatibility": {
     "minimum": "13",
     "verified": "14"
   },
-  "url": "https://github.com/Txpple/fvtt-mod-txpplecombat",
-  "manifest": "https://github.com/Txpple/fvtt-mod-txpplecombat/releases/latest/download/module.json",
-  "download": "https://github.com/Txpple/fvtt-mod-txpplecombat/releases/download/v1.0.0/fvtt-mod-txpplecombat.zip",
-  "readme": "https://github.com/Txpple/fvtt-mod-txpplecombat#readme",
+  "url": "https://github.com/Txpple/fvtt-mod-combatplus",
+  "manifest": "https://github.com/Txpple/fvtt-mod-combatplus/releases/latest/download/module.json",
+  "download": "https://github.com/Txpple/fvtt-mod-combatplus/releases/download/v1.0.0/fvtt-mod-combatplus.zip",
+  "readme": "https://github.com/Txpple/fvtt-mod-combatplus#readme",
   "license": "MIT"
 }
