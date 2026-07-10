@@ -283,10 +283,12 @@ Hooks.on("updateCombat", (combat, changed) => {
 
   if (!combat.started) return;
 
-  // Clear this client's targets once the turn of a combatant it owns has ended.
+  // Clear this client's targets once the turn of a combatant it owns has ended. Cleared via
+  // Token#setTarget — User#updateTokenTargets existed through v13 but is GONE in v14; setTarget
+  // is stable in both. groupSelection defers the per-token broadcast; one activity ping at the end.
   const previous = combat.combatants.get(prior.combatantId);
   if (setting(S.clearTargets) && previous?.isOwner && game.user.targets.size) {
-    game.user.updateTokenTargets([]);
+    for (const t of [...game.user.targets]) t.setTarget(false, { releaseOthers: false, groupSelection: true });
     game.user.broadcastActivity({ targets: [] });
   }
 
