@@ -1,7 +1,7 @@
 /**
  * Combat Plus — quality-of-life combat automation.
  *
- * Six independent features, each behind its own world setting (Game Settings → Configure
+ * Eight independent features, each behind its own world setting (Game Settings → Configure
  * Settings → Combat Plus):
  *
  *   - Combat Music: when combat starts, whatever is currently playing is snapshotted and
@@ -22,6 +22,14 @@
  *   - Pan to Combatant / Select Combatant: when a combatant you own starts its turn, your
  *     client pans to and/or selects its token. The GM owns everything, so for the GM this is
  *     every combatant — which is the desired follow-the-action behavior.
+ *   - Automatically Set Defeated: when an in-combat actor's HP hits 0, its combatant is marked
+ *     defeated and the dead overlay stamped — cleared again if it's healed back up. NPCs-only
+ *     mode leaves player characters to their death saves. Driven by the active GM's client;
+ *     deliberately scoped to actors that actually have a combatant somewhere.
+ *   - Turn Notifications: player-facing "your turn" / "next up" messages ({{combatant.name}}
+ *     templates) as normal notifications or a large screen banner with configurable font size,
+ *     plus per-cue sound effects (blank path = silent) at a shared volume. GM clients stay
+ *     quiet — the tracker already tells the GM everything; the new-round cue plays for all.
  *
  * Compatibility: everything here rides document-level hooks (preUpdateCombat, updateCombat,
  * deleteCombat) — no combat-tracker DOM is touched, so replacement trackers like Carousel
@@ -47,6 +55,20 @@ const S = {
   clearTargets: "clearTargets",
   panToCombatant: "panToCombatant",
   selectCombatant: "selectCombatant",
+  autoDefeated: "autoDefeated",
+  showNextUp: "showNextUp",
+  nextUpMessage: "nextUpMessage",
+  showYourTurn: "showYourTurn",
+  yourTurnMessage: "yourTurnMessage",
+  largeSize: "largeSize",
+  largeFontSize: "largeFontSize",
+  nextTurnSound: "nextTurnSound",
+  nextTurnSoundPath: "nextTurnSoundPath",
+  currentTurnSound: "currentTurnSound",
+  currentTurnSoundPath: "currentTurnSoundPath",
+  newRoundSound: "newRoundSound",
+  newRoundSoundPath: "newRoundSoundPath",
+  soundVolume: "soundVolume",
   resumeState: "resumeState"
 };
 
@@ -186,6 +208,13 @@ Hooks.once("init", () => {
     scope: "world", config: true, type: Boolean, default: false
   });
 
+  game.settings.register(MODULE_ID, S.autoDefeated, {
+    name: "Automatically Set Defeated",
+    hint: "Mark a combatant defeated (and stamp the dead overlay) when its hit points reach 0 — and clear it again if healed back up. NPCs-only leaves player characters to their death saves.",
+    scope: "world", config: true, type: String, default: "off",
+    choices: { off: "Off", npcs: "NPC Zero HP", all: "Everyone Zero HP" }
+  });
+
   game.settings.register(MODULE_ID, S.lockMovement, {
     name: "Block Out of Turn Movement",
     hint: "While a combat is running, players can only move a token during that token's turn. The GM is never blocked.",
@@ -216,6 +245,88 @@ Hooks.once("init", () => {
     scope: "world", config: true, type: Boolean, default: false
   });
 
+  // --- Combat Turn Notification block (a divider header is injected above the first of these
+  // by the renderSettingsConfig hook below). Player-facing: GM clients stay quiet.
+  game.settings.register(MODULE_ID, S.showNextUp, {
+    name: "Show 'Next Up' Notification",
+    hint: "Show a notification to players that their turn is next.",
+    scope: "world", config: true, type: Boolean, default: false
+  });
+
+  game.settings.register(MODULE_ID, S.nextUpMessage, {
+    name: "Next Up Message",
+    hint: "{{combatant.name}} is replaced with the combatant's name.",
+    scope: "world", config: true, type: String, default: "Get ready {{combatant.name}}, you're up next!"
+  });
+
+  game.settings.register(MODULE_ID, S.showYourTurn, {
+    name: "Show 'Your Turn' Notification",
+    hint: "Show a notification to the player whose turn has started.",
+    scope: "world", config: true, type: Boolean, default: false
+  });
+
+  game.settings.register(MODULE_ID, S.yourTurnMessage, {
+    name: "Your Turn Message",
+    hint: "{{combatant.name}} is replaced with the combatant's name.",
+    scope: "world", config: true, type: String, default: "It's your turn {{combatant.name}}, what do you want to do?"
+  });
+
+  game.settings.register(MODULE_ID, S.largeSize, {
+    name: "Large Size",
+    hint: "Display the turn notifications as a large banner across the screen instead of a normal notification.",
+    scope: "world", config: true, type: Boolean, default: false
+  });
+
+  game.settings.register(MODULE_ID, S.largeFontSize, {
+    name: "Large Font Size",
+    hint: "Font size (px) for the large turn banner.",
+    scope: "world", config: true, type: Number, default: 80,
+    range: { min: 20, max: 200, step: 5 }
+  });
+
+  game.settings.register(MODULE_ID, S.nextTurnSound, {
+    name: "Next Turn Sound",
+    hint: "Audio effect to play for a player when their turn is up next. Leave the file blank to play no sound.",
+    scope: "world", config: true, type: Boolean, default: true
+  });
+
+  game.settings.register(MODULE_ID, S.nextTurnSoundPath, {
+    name: "Next Turn Sound File",
+    hint: "Leave blank to play no sound.",
+    scope: "world", config: true, type: String, default: "", filePicker: "audio"
+  });
+
+  game.settings.register(MODULE_ID, S.currentTurnSound, {
+    name: "Current Turn Sound",
+    hint: "Audio effect to play for a player at the beginning of their turn. Leave the file blank to play no sound.",
+    scope: "world", config: true, type: Boolean, default: true
+  });
+
+  game.settings.register(MODULE_ID, S.currentTurnSoundPath, {
+    name: "Current Turn Sound File",
+    hint: "Leave blank to play no sound.",
+    scope: "world", config: true, type: String, default: "", filePicker: "audio"
+  });
+
+  game.settings.register(MODULE_ID, S.newRoundSound, {
+    name: "New Round Sound",
+    hint: "Audio effect to play for everyone at the start of a new round. Leave the file blank to play no sound.",
+    scope: "world", config: true, type: Boolean, default: true
+  });
+
+  game.settings.register(MODULE_ID, S.newRoundSoundPath, {
+    name: "New Round Sound File",
+    hint: "Leave blank to play no sound.",
+    scope: "world", config: true, type: String, default: "", filePicker: "audio"
+  });
+
+  game.settings.register(MODULE_ID, S.soundVolume, {
+    name: "Volume",
+    hint: "Volume of the turn and round sound cues.",
+    scope: "world", config: true, type: Number, default: 60,
+    range: { min: 0, max: 100, step: 5 }
+  });
+
   // Hidden plumbing: the music picker's storage and the pre-combat playback snapshot.
   game.settings.register(MODULE_ID, S.combatPlaylist, { scope: "world", config: false, type: String, default: "" });
   game.settings.register(MODULE_ID, S.combatSound, { scope: "world", config: false, type: String, default: "" });
@@ -240,6 +351,85 @@ Hooks.on("renderSettingsConfig", (app, element) => {
   };
   sync();
   checkbox.addEventListener("change", sync);
+
+  // Divider above the turn-notification block so the long settings list reads in two chapters.
+  const nextUpGroup = el.querySelector(`input[name="${MODULE_ID}.${S.showNextUp}"]`)?.closest(".form-group");
+  if (nextUpGroup && !nextUpGroup.previousElementSibling?.classList?.contains("cp-divider")) {
+    const header = document.createElement("h4");
+    header.className = "divider cp-divider";
+    header.textContent = "Combat Turn Notification";
+    nextUpGroup.before(header);
+  }
+});
+
+/* ---------------------------------------------------------------------------------------------
+ * Turn notifications & sound cues
+ * ------------------------------------------------------------------------------------------- */
+
+/** The next non-defeated combatant after the current turn (wrapping into the next round). */
+function nextCombatant(combat) {
+  const turns = combat.turns;
+  if (!turns?.length) return null;
+  for (let i = 1; i <= turns.length; i++) {
+    const c = turns[(combat.turn + i) % turns.length];
+    if (c && !c.isDefeated) return c;
+  }
+  return null;
+}
+
+/** Show a turn message: a big self-fading banner when Large Size is on, else a notification. */
+function notifyTurn(template, combatant) {
+  const text = (template ?? "").replaceAll("{{combatant.name}}", combatant.name ?? "");
+  if (!text) return;
+  if (!setting(S.largeSize)) return void ui.notifications.info(text);
+  const banner = document.createElement("div");
+  banner.textContent = text;
+  Object.assign(banner.style, {
+    position: "fixed", top: "15%", left: "0", width: "100%", textAlign: "center",
+    fontSize: `${setting(S.largeFontSize) || 80}px`, fontFamily: "var(--font-h1, inherit)",
+    color: "#fff", textShadow: "0 0 8px #000, 2px 2px 4px #000",
+    zIndex: 9999, pointerEvents: "none", transition: "opacity 1s ease-in"
+  });
+  document.body.appendChild(banner);
+  setTimeout(() => (banner.style.opacity = "0"), 3000);
+  setTimeout(() => banner.remove(), 4200);
+}
+
+/** Play a local sound cue if its toggle is on and a file is configured (blank = silent). */
+function playCue(enableKey, pathKey) {
+  if (!setting(enableKey)) return;
+  const src = setting(pathKey);
+  if (!src) return;
+  const volume = (setting(S.soundVolume) ?? 60) / 100;
+  void foundry.audio.AudioHelper.play({ src, volume, loop: false }, false);
+}
+
+/* ---------------------------------------------------------------------------------------------
+ * Automatically set defeated — active-GM client marks combatants at 0 HP (and unmarks on heal).
+ * Scoped to actors that actually have a combatant: out-of-combat tokens are never touched.
+ * ------------------------------------------------------------------------------------------- */
+
+Hooks.on("updateActor", (actor, changed) => {
+  const mode = setting(S.autoDefeated);
+  if (mode === "off" || !isActiveGM()) return;
+  const hp = foundry.utils.getProperty(changed, "system.attributes.hp.value");
+  if (hp === undefined) return;
+  if (mode === "npcs" && actor.type === "character") return;
+
+  const defeated = hp <= 0;
+  let touched = false;
+  for (const combat of game.combats) {
+    for (const c of combat.combatants) {
+      // Unlinked (synthetic) actors match by token; linked actors catch all their linked tokens.
+      const match = actor.isToken ? c.tokenId === actor.token.id
+        : c.actorId === actor.id && c.token?.actorLink !== false;
+      if (!match || c.isDefeated === defeated) continue;
+      void c.update({ defeated });
+      touched = true;
+    }
+  }
+  if (touched && actor.statuses.has("dead") !== defeated)
+    void actor.toggleStatusEffect("dead", { active: defeated, overlay: true });
 });
 
 /* ---------------------------------------------------------------------------------------------
@@ -311,6 +501,23 @@ Hooks.on("updateCombat", (combat, changed) => {
   if (setting(S.clearTargets) && previous?.isOwner && game.user.targets.size) {
     for (const t of [...game.user.targets]) t.setTarget(false, { releaseOthers: false, groupSelection: true });
     game.user.broadcastActivity({ targets: [] });
+  }
+
+  // Turn notifications & sound cues. The new-round cue is for everyone; the your-turn /
+  // next-up messages and turn sounds are player-facing only — the GM owns everything and
+  // already has the tracker, so GM clients stay quiet.
+  if (combat.round > prior.round) playCue(S.newRoundSound, S.newRoundSoundPath);
+  if (!game.user.isGM) {
+    const current = combat.combatant;
+    if (current?.isOwner) {
+      if (setting(S.showYourTurn)) notifyTurn(setting(S.yourTurnMessage), current);
+      playCue(S.currentTurnSound, S.currentTurnSoundPath);
+    }
+    const next = nextCombatant(combat);
+    if (next?.isOwner && next !== current) {
+      if (setting(S.showNextUp)) notifyTurn(setting(S.nextUpMessage), next);
+      playCue(S.nextTurnSound, S.nextTurnSoundPath);
+    }
   }
 
   // Pan/select the new combatant on the client that owns it (token.object is only non-null

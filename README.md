@@ -1,7 +1,7 @@
 # Combat Plus
 
-Quality-of-life combat automation for Foundry VTT. Six independent features, each behind its
-own checkbox in **Game Settings → Configure Settings → Combat Plus**:
+Quality-of-life combat automation for Foundry VTT. Eight independent features, each behind
+its own setting in **Game Settings → Configure Settings → Combat Plus**:
 
 - **Combat Music** — when combat starts, whatever is playing is snapshotted and silenced, and
   the configured combat playlist (or a single track from it) starts. When the fight ends, the
@@ -21,6 +21,16 @@ own checkbox in **Game Settings → Configure Settings → Combat Plus**:
   token.
 - **Select Combatant** — when a combatant you own starts its turn, its token is selected
   automatically.
+- **Automatically Set Defeated** — when an in-combat actor's HP reaches 0, its combatant is
+  marked defeated and the dead overlay stamped; healed back above 0, both are cleared. The
+  "NPC Zero HP" mode leaves player characters to their death saves; out-of-combat tokens are
+  never touched.
+- **Combat Turn Notification** — "your turn" and "next up" messages for players (with
+  `{{combatant.name}}` templates), either as normal notifications or a large screen banner
+  with configurable font size, plus sound cues for next turn / current turn / new round at a
+  shared volume. Sound files are chosen per cue — leave a file blank to keep that cue silent.
+  GM clients are never notified (the tracker already tells the GM everything); the new-round
+  sound plays for everyone.
 
 Pan/select/clear act on the client that **owns** the combatant: players get them on their own
 turns; the GM (who owns everything) follows every turn — the desired follow-the-action
