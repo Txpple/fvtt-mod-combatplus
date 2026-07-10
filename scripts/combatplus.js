@@ -1,7 +1,7 @@
 /**
  * Combat Plus — quality-of-life combat automation.
  *
- * Five independent features, each behind its own world setting (Game Settings → Configure
+ * Six independent features, each behind its own world setting (Game Settings → Configure
  * Settings → Combat Plus):
  *
  *   - Combat Music: when combat starts, whatever is currently playing is snapshotted and
@@ -11,6 +11,11 @@
  *     the table in battle music. Playback is executed by the active GM's client only.
  *   - No Combat Without Initiative: vetoes the round 0 → 1 update in preUpdateCombat while
  *     any non-defeated combatant still has null initiative, and names the offenders.
+ *   - Not Your Turn!: while a combat is running, players can only move a token during that
+ *     token's turn — the x/y/elevation update is vetoed in preUpdateToken with a warning.
+ *     An extra toggle also locks player-owned tokens that aren't part of the fight. The GM
+ *     is never blocked. (The veto runs on the initiating client, same as the module of the
+ *     same name — it is a table-manners rail, not server-side enforcement.)
  *   - Clear Targets After Turn: when the turn of a combatant you own ends, your client clears
  *     its own targets (and broadcasts the empty set).
  *   - Pan to Combatant / Select Combatant: when a combatant you own starts its turn, your
@@ -36,6 +41,8 @@ const S = {
   combatPlaylist: "combatPlaylist",
   combatSound: "combatSound",
   requireInitiative: "requireInitiative",
+  lockMovement: "lockMovement",
+  lockNonCombatants: "lockNonCombatants",
   clearTargets: "clearTargets",
   panToCombatant: "panToCombatant",
   selectCombatant: "selectCombatant",
@@ -178,6 +185,18 @@ Hooks.once("init", () => {
     scope: "world", config: true, type: Boolean, default: false
   });
 
+  game.settings.register(MODULE_ID, S.lockMovement, {
+    name: "Not Your Turn!",
+    hint: "While a combat is running, players can only move a token during that token's turn. The GM is never blocked.",
+    scope: "world", config: true, type: Boolean, default: false
+  });
+
+  game.settings.register(MODULE_ID, S.lockNonCombatants, {
+    name: "Not Your Turn: Lock Non-Combatants",
+    hint: "Also lock player-owned tokens that aren't part of the fight while a combat runs on their scene. Off = only combatants are restricted.",
+    scope: "world", config: true, type: Boolean, default: false
+  });
+
   game.settings.register(MODULE_ID, S.clearTargets, {
     name: "Clear Targets After Turn",
     hint: "When the turn of a combatant you own ends, your targets are cleared automatically.",
@@ -221,6 +240,33 @@ Hooks.on("preUpdateCombat", (combat, changed) => {
   const missing = combat.combatants.filter(c => c.initiative == null && !c.isDefeated);
   if (!missing.length) return;
   ui.notifications.warn(`Combat can't begin — initiative hasn't been rolled for: ${missing.map(c => c.name).join(", ")}.`);
+  return false;
+});
+
+/* ---------------------------------------------------------------------------------------------
+ * Not Your Turn! — movement lock while combat runs. Veto happens in preUpdateToken on the
+ * client initiating the move, so it covers drags, arrow keys, ruler moves, and macros alike.
+ * ------------------------------------------------------------------------------------------- */
+
+/** The started combat governing a token's scene, if any (scene-less combats govern everywhere). */
+const governingCombat = tokenDoc =>
+  game.combats.find(c => c.started && (!c.scene || c.scene.id === tokenDoc.parent?.id));
+
+Hooks.on("preUpdateToken", (tokenDoc, changed) => {
+  if (game.user.isGM || !setting(S.lockMovement)) return;
+  if (!("x" in changed) && !("y" in changed) && !("elevation" in changed)) return;
+
+  const combat = governingCombat(tokenDoc);
+  if (!combat) return;
+  if (combat.combatant?.tokenId === tokenDoc.id) return; // its turn — move freely
+
+  const isCombatant = combat.combatants.find(c =>
+    c.tokenId === tokenDoc.id && (!c.sceneId || c.sceneId === tokenDoc.parent?.id));
+  if (!isCombatant && !setting(S.lockNonCombatants)) return;
+
+  ui.notifications.warn(isCombatant
+    ? `Not your turn — ${tokenDoc.name} moves when its turn comes.`
+    : `A combat is underway — ${tokenDoc.name} is locked until it ends.`);
   return false;
 });
 
