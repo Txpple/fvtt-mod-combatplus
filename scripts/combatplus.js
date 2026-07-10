@@ -354,14 +354,19 @@ Hooks.on("renderSettingsConfig", (app, element) => {
   if (musicToggle && menuButton)
     musicToggle.closest(".form-group")?.after(menuButton.closest(".form-group"));
 
-  // Divider above the turn-notification block so the long settings list reads in two chapters.
-  const nextUpGroup = input(S.showNextUp)?.closest(".form-group");
-  if (nextUpGroup && !nextUpGroup.previousElementSibling?.classList?.contains("cp-divider")) {
+  // Divider headers so the long settings list reads in chapters. Inserted after the menu-button
+  // move above, so "Battle Music" ends up heading both the toggle and the picker beneath it.
+  const addDivider = (field, text) => {
+    const group = field?.closest(".form-group");
+    if (!group || group.previousElementSibling?.classList?.contains("cp-divider")) return;
     const header = document.createElement("h4");
     header.className = "divider cp-divider";
-    header.textContent = "Combat Turn Notification";
-    nextUpGroup.before(header);
-  }
+    header.textContent = text;
+    group.before(header);
+  };
+  addDivider(musicToggle, "Battle Music");
+  addDivider(input(S.requireInitiative), "Combat Workflows");
+  addDivider(input(S.showNextUp), "Combat Turn Notification");
 
   // Dependency rules: field → is it relevant, given the toggles' CURRENT (unsaved) state?
   const on = key => !!input(key)?.checked;
