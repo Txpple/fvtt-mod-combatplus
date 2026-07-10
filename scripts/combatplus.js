@@ -11,8 +11,9 @@
  *     the table in battle music. Playback is executed by the active GM's client only.
  *   - No Combat Without Initiative: vetoes the round 0 → 1 update in preUpdateCombat while
  *     any non-defeated combatant still has null initiative, and names the offenders.
- *   - Not Your Turn!: while a combat is running, players can only move a token during that
- *     token's turn — the x/y/elevation update is vetoed in preUpdateToken with a warning.
+ *   - Block Out of Turn Movement: while a combat is running, players can only move a token
+ *     during that token's turn — the x/y/elevation update is vetoed in preUpdateToken with a
+ *     warning.
  *     An extra toggle also locks player-owned tokens that aren't part of the fight. The GM
  *     is never blocked. (The veto runs on the initiating client, same as the module of the
  *     same name — it is a table-manners rail, not server-side enforcement.)
@@ -186,13 +187,13 @@ Hooks.once("init", () => {
   });
 
   game.settings.register(MODULE_ID, S.lockMovement, {
-    name: "Not Your Turn!",
+    name: "Block Out of Turn Movement",
     hint: "While a combat is running, players can only move a token during that token's turn. The GM is never blocked.",
     scope: "world", config: true, type: Boolean, default: false
   });
 
   game.settings.register(MODULE_ID, S.lockNonCombatants, {
-    name: "Not Your Turn: Lock Non-Combatants",
+    name: "Block Out of Turn Movement: Non-Combatants",
     hint: "Also lock player-owned tokens that aren't part of the fight while a combat runs on their scene. Off = only combatants are restricted.",
     scope: "world", config: true, type: Boolean, default: false
   });
@@ -219,6 +220,26 @@ Hooks.once("init", () => {
   game.settings.register(MODULE_ID, S.combatPlaylist, { scope: "world", config: false, type: String, default: "" });
   game.settings.register(MODULE_ID, S.combatSound, { scope: "world", config: false, type: String, default: "" });
   game.settings.register(MODULE_ID, S.resumeState, { scope: "world", config: false, type: Object, default: [] });
+});
+
+// Settings-sheet polish: core renders menu buttons ABOVE a module's settings, which would put
+// the track picker above the Combat Music toggle that governs it — move it just below the
+// toggle instead, and grey it out (live) while the feature is unchecked.
+Hooks.on("renderSettingsConfig", (app, element) => {
+  const el = element instanceof HTMLElement ? element : element?.[0];
+  const checkbox = el?.querySelector(`input[name="${MODULE_ID}.${S.combatMusic}"]`);
+  const button = el?.querySelector(`button[data-key="${MODULE_ID}.combatMusicMenu"]`);
+  const checkboxGroup = checkbox?.closest(".form-group");
+  const menuGroup = button?.closest(".form-group");
+  if (!checkboxGroup || !menuGroup) return;
+
+  checkboxGroup.after(menuGroup);
+  const sync = () => {
+    button.disabled = !checkbox.checked;
+    menuGroup.style.opacity = checkbox.checked ? "" : "0.4";
+  };
+  sync();
+  checkbox.addEventListener("change", sync);
 });
 
 /* ---------------------------------------------------------------------------------------------

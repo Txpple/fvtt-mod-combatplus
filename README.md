@@ -10,10 +10,11 @@ own checkbox in **Game Settings → Configure Settings → Combat Plus**:
   driven by the active GM's client only.
 - **No Combat Without Initiative** — combat refuses to begin while any non-defeated combatant
   still hasn't rolled initiative, and the warning names the stragglers.
-- **Not Your Turn!** — while a combat is running, players can only move a token during that
-  token's turn; blocked moves get a warning naming the token. The GM is never blocked, and
-  tokens only lock once combat has actually started (round 1+), so pre-fight setup stays
-  free. An extra checkbox also locks player-owned tokens that aren't part of the fight.
+- **Block Out of Turn Movement** — while a combat is running, players can only move a token
+  during that token's turn; blocked moves get a warning naming the token. The GM is never
+  blocked, and tokens only lock once combat has actually started (round 1+), so pre-fight
+  setup stays free. An extra checkbox also locks player-owned tokens that aren't part of the
+  fight.
 - **Clear Targets After Turn** — when the turn of a combatant you own ends, your targets are
   cleared automatically.
 - **Pan to Combatant** — when a combatant you own starts its turn, the camera pans to its
