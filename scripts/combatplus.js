@@ -335,31 +335,54 @@ Hooks.once("init", () => {
 
 // Settings-sheet polish: core renders menu buttons ABOVE a module's settings, which would put
 // the track picker above the Combat Music toggle that governs it — move it just below the
-// toggle instead, and grey it out (live) while the feature is unchecked.
+// toggle instead. Fields whose governing toggle is unchecked grey out live (disabled inputs are
+// skipped by form submission, so a greyed field simply keeps its stored value).
 Hooks.on("renderSettingsConfig", (app, element) => {
   const el = element instanceof HTMLElement ? element : element?.[0];
-  const checkbox = el?.querySelector(`input[name="${MODULE_ID}.${S.combatMusic}"]`);
-  const button = el?.querySelector(`button[data-key="${MODULE_ID}.combatMusicMenu"]`);
-  const checkboxGroup = checkbox?.closest(".form-group");
-  const menuGroup = button?.closest(".form-group");
-  if (!checkboxGroup || !menuGroup) return;
-
-  checkboxGroup.after(menuGroup);
-  const sync = () => {
-    button.disabled = !checkbox.checked;
-    menuGroup.style.opacity = checkbox.checked ? "" : "0.4";
+  if (!el) return;
+  const input = key => el.querySelector(`[name="${MODULE_ID}.${key}"]`);
+  const setEnabled = (field, enabled) => {
+    if (!field) return;
+    field.disabled = !enabled;
+    const group = field.closest(".form-group");
+    if (group) group.style.opacity = enabled ? "" : "0.4";
   };
-  sync();
-  checkbox.addEventListener("change", sync);
+
+  // Combat music: move the track-picker button just below its toggle.
+  const musicToggle = input(S.combatMusic);
+  const menuButton = el.querySelector(`button[data-key="${MODULE_ID}.combatMusicMenu"]`);
+  if (musicToggle && menuButton)
+    musicToggle.closest(".form-group")?.after(menuButton.closest(".form-group"));
 
   // Divider above the turn-notification block so the long settings list reads in two chapters.
-  const nextUpGroup = el.querySelector(`input[name="${MODULE_ID}.${S.showNextUp}"]`)?.closest(".form-group");
+  const nextUpGroup = input(S.showNextUp)?.closest(".form-group");
   if (nextUpGroup && !nextUpGroup.previousElementSibling?.classList?.contains("cp-divider")) {
     const header = document.createElement("h4");
     header.className = "divider cp-divider";
     header.textContent = "Combat Turn Notification";
     nextUpGroup.before(header);
   }
+
+  // Dependency rules: field → is it relevant, given the toggles' CURRENT (unsaved) state?
+  const on = key => !!input(key)?.checked;
+  const anyNotification = () => on(S.showNextUp) || on(S.showYourTurn);
+  const anySound = () => on(S.nextTurnSound) || on(S.currentTurnSound) || on(S.newRoundSound);
+  const rules = new Map([
+    [menuButton, () => on(S.combatMusic)],
+    [input(S.nextUpMessage), () => on(S.showNextUp)],
+    [input(S.yourTurnMessage), () => on(S.showYourTurn)],
+    [input(S.largeSize), anyNotification],
+    [input(S.largeFontSize), () => anyNotification() && on(S.largeSize)],
+    [input(S.nextTurnSoundPath), () => on(S.nextTurnSound)],
+    [input(S.currentTurnSoundPath), () => on(S.currentTurnSound)],
+    [input(S.newRoundSoundPath), () => on(S.newRoundSound)],
+    [input(S.soundVolume), anySound]
+  ]);
+  const syncAll = () => rules.forEach((relevant, field) => setEnabled(field, relevant()));
+  syncAll();
+  for (const key of [S.combatMusic, S.showNextUp, S.showYourTurn, S.largeSize,
+    S.nextTurnSound, S.currentTurnSound, S.newRoundSound])
+    input(key)?.addEventListener("change", syncAll);
 });
 
 /* ---------------------------------------------------------------------------------------------
