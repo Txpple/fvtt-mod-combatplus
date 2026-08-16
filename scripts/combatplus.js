@@ -55,7 +55,8 @@ const S = {
   clearTargets: "clearTargets",
   panToCombatant: "panToCombatant",
   selectCombatant: "selectCombatant",
-  autoDefeated: "autoDefeated",
+  autoDefeatedNPCs: "autoDefeatedNPCs",
+  autoDefeatedPCs: "autoDefeatedPCs",
   showNextUp: "showNextUp",
   nextUpMessage: "nextUpMessage",
   showYourTurn: "showYourTurn",
@@ -208,11 +209,20 @@ Hooks.once("init", () => {
     scope: "world", config: true, type: Boolean, default: false
   });
 
-  game.settings.register(MODULE_ID, S.autoDefeated, {
-    name: "Automatically Set Defeated",
-    hint: "Mark a combatant defeated (and stamp the dead overlay) when its hit points reach 0 — and clear it again if healed back up. NPCs-only leaves player characters to their death saves.",
-    scope: "world", config: true, type: String, default: "off",
-    choices: { off: "Off", npcs: "NPC Zero HP", all: "Everyone Zero HP" }
+  // Split from the old three-choice `autoDefeated` at v1.3.0 (user call 2026-08-16): one
+  // switch per side, and the overlay no longer requires a combat — a creature dead on the
+  // practice field is just as dead as one dead in initiative. Both default ON (the user's
+  // explicit call for PCs; continuity for NPCs).
+  game.settings.register(MODULE_ID, S.autoDefeatedNPCs, {
+    name: "Auto-Defeated: NPCs",
+    hint: "When an NPC's hit points reach 0, stamp the dead overlay (and mark its combatant defeated if it is in a fight) — cleared again if it is healed back up. Works in and out of combat.",
+    scope: "world", config: true, type: Boolean, default: true
+  });
+
+  game.settings.register(MODULE_ID, S.autoDefeatedPCs, {
+    name: "Auto-Defeated: PCs",
+    hint: "The same for player characters at 0 HP. By the book a PC at 0 is dying, not dead — this table stamps the overlay anyway (turn this off to leave PCs to their death saves).",
+    scope: "world", config: true, type: Boolean, default: true
   });
 
   game.settings.register(MODULE_ID, S.lockMovement, {
@@ -433,19 +443,20 @@ function playCue(enableKey, pathKey) {
 }
 
 /* ---------------------------------------------------------------------------------------------
- * Automatically set defeated — active-GM client marks combatants at 0 HP (and unmarks on heal).
- * Scoped to actors that actually have a combatant: out-of-combat tokens are never touched.
+ * Automatically set defeated — active-GM client stamps the dead overlay at 0 HP (and clears
+ * it on heal), per side. Combatants additionally get the tracker's defeated mark; being in
+ * a combat is NOT required for the overlay (v1.3.0, user call — the old combat-only scope
+ * is why a practice dummy could die without an icon).
  * ------------------------------------------------------------------------------------------- */
 
 Hooks.on("updateActor", (actor, changed) => {
-  const mode = setting(S.autoDefeated);
-  if (mode === "off" || !isActiveGM()) return;
+  if (!isActiveGM()) return;
   const hp = foundry.utils.getProperty(changed, "system.attributes.hp.value");
   if (hp === undefined) return;
-  if (mode === "npcs" && actor.type === "character") return;
+  const isPC = actor.type === "character";
+  if (!setting(isPC ? S.autoDefeatedPCs : S.autoDefeatedNPCs)) return;
 
   const defeated = hp <= 0;
-  let touched = false;
   for (const combat of game.combats) {
     for (const c of combat.combatants) {
       // Unlinked (synthetic) actors match by token; linked actors catch all their linked tokens.
@@ -453,10 +464,9 @@ Hooks.on("updateActor", (actor, changed) => {
         : c.actorId === actor.id && c.token?.actorLink !== false;
       if (!match || c.isDefeated === defeated) continue;
       void c.update({ defeated });
-      touched = true;
     }
   }
-  if (touched && actor.statuses.has("dead") !== defeated)
+  if (actor.statuses.has("dead") !== defeated)
     void actor.toggleStatusEffect("dead", { active: defeated, overlay: true });
 });
 
