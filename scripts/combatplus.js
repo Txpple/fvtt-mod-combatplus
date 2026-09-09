@@ -1,7 +1,7 @@
 /**
  * Combat Plus — quality-of-life combat automation.
  *
- * Eight independent features, each behind its own world setting (Game Settings → Configure
+ * Nine independent features, each behind its own world setting (Game Settings → Configure
  * Settings → Combat Plus):
  *
  *   - Combat Music: when combat starts, whatever is currently playing is snapshotted and
@@ -30,8 +30,11 @@
  *     templates) as normal notifications or a large screen banner with configurable font size,
  *     plus per-cue sound effects (blank path = silent) at a shared volume. GM clients stay
  *     quiet — the tracker already tells the GM everything; the new-round cue plays for all.
+ *   - Confirm Roll Visibility: the roll-visibility buttons (public / private GM / blind / self /
+ *     in-character) sit directly under the chat box, where a stray click silently reroutes every
+ *     later roll. The click is intercepted and applied only once confirmed.
  *
- * Compatibility: everything here rides document-level hooks (preUpdateCombat, updateCombat,
+ * Compatibility: every combat feature rides document-level hooks (preUpdateCombat, updateCombat,
  * deleteCombat) — no combat-tracker DOM is touched, so replacement trackers like Carousel
  * Combat Tracker work unchanged: their begin/next-turn buttons funnel into the same Combat
  * document updates these hooks observe (and the initiative gate vetoes).
@@ -70,6 +73,7 @@ const S = {
   newRoundSound: "newRoundSound",
   newRoundSoundPath: "newRoundSoundPath",
   soundVolume: "soundVolume",
+  confirmRollVisibility: "confirmRollVisibility",
   resumeState: "resumeState"
 };
 
@@ -337,6 +341,13 @@ Hooks.once("init", () => {
     range: { min: 0, max: 100, step: 5 }
   });
 
+  // Registered last so it lands under its own header at the bottom of the sheet.
+  game.settings.register(MODULE_ID, S.confirmRollVisibility, {
+    name: "Confirm Roll Visibility Changes",
+    hint: "Clicking one of the roll visibility buttons under the chat box (public / private GM / blind / self) asks for confirmation first. They sit right where the cursor already is, and a misclick silently reroutes every roll that follows.",
+    scope: "world", config: true, type: Boolean, default: true
+  });
+
   // Hidden plumbing: the music picker's storage and the pre-combat playback snapshot.
   game.settings.register(MODULE_ID, S.combatPlaylist, { scope: "world", config: false, type: String, default: "" });
   game.settings.register(MODULE_ID, S.combatSound, { scope: "world", config: false, type: String, default: "" });
@@ -377,6 +388,7 @@ Hooks.on("renderSettingsConfig", (app, element) => {
   addDivider(musicToggle, "Battle Music");
   addDivider(input(S.requireInitiative), "Combat Workflows");
   addDivider(input(S.showNextUp), "Combat Turn Notification");
+  addDivider(input(S.confirmRollVisibility), "Chat & Rolls");
 
   // Dependency rules: field → is it relevant, given the toggles' CURRENT (unsaved) state?
   const on = key => !!input(key)?.checked;
@@ -399,6 +411,59 @@ Hooks.on("renderSettingsConfig", (app, element) => {
     S.nextTurnSound, S.currentTurnSound, S.newRoundSound])
     input(key)?.addEventListener("change", syncAll);
 });
+
+/* ---------------------------------------------------------------------------------------------
+ * Confirm roll visibility changes — the roll-visibility buttons sit directly under the chat box,
+ * so a stray click silently reroutes every roll that follows with nothing but a shifted pressed
+ * state to show for it. The click is caught in the capture phase, before core's delegated action
+ * handler sees it, and the mode is applied only once confirmed.
+ *
+ * v14 renamed the plumbing wholesale: the setting core.rollMode → core.messageMode (reading the
+ * old key now logs a deprecation warning), the container #roll-privacy → #message-modes, and the
+ * mode table CONFIG.Dice.rollModes → CONFIG.ChatMessage.modes. Both generations are matched.
+ * ------------------------------------------------------------------------------------------- */
+
+const MODE_BUTTON = ['[data-action="messageMode"]', '[data-action="rollMode"]',
+  "#message-modes [data-mode]", "#roll-privacy [data-mode]"].join(", ");
+
+/** The core setting key and mode table for this Foundry generation. */
+const rollVisibility = () => game.settings.settings.has("core.messageMode")
+  ? { key: "messageMode", modes: CONFIG.ChatMessage?.modes ?? {} }
+  : { key: "rollMode", modes: CONFIG.Dice?.rollModes ?? {} };
+
+/** A mode's display name ("gm" → "Private GM Roll"), falling back to the raw key. */
+function modeLabel(modes, mode) {
+  const entry = modes?.[mode];
+  return game.i18n.localize((typeof entry === "string" ? entry : entry?.label) ?? mode);
+}
+
+/** Ask before switching, and only then write the mode (core re-renders the buttons on change). */
+async function confirmRollVisibility(key, modes, from, to) {
+  const escaped = mode => foundry.utils.escapeHTML(modeLabel(modes, mode));
+  const confirmed = await foundry.applications.api.DialogV2.confirm({
+    window: { title: `${TITLE}: Change Roll Visibility?`, icon: "fa-solid fa-dice-d20" },
+    content: `<p>Switch roll visibility from <strong>${escaped(from)}</strong> to <strong>${escaped(to)}</strong>?</p>`,
+    yes: { label: `Switch to ${modeLabel(modes, to)}`, icon: modes?.[to]?.icon ?? "fa-solid fa-check" },
+    no: { label: `Keep ${modeLabel(modes, from)}` }, // the default button: Enter or Escape changes nothing
+    modal: true
+  });
+  if (confirmed) await game.settings.set("core", key, to);
+}
+
+Hooks.once("ready", () => document.addEventListener("click", event => {
+  if (!setting(S.confirmRollVisibility)) return;
+  const mode = event.target?.closest?.(MODE_BUTTON)?.dataset.mode;
+  if (!mode) return;
+
+  const { key, modes } = rollVisibility();
+  const current = game.settings.get("core", key);
+  if (mode === current) return; // clicking the mode already in force changes nothing
+
+  event.preventDefault();
+  event.stopPropagation();
+  event.stopImmediatePropagation();
+  void confirmRollVisibility(key, modes, current, mode);
+}, { capture: true }));
 
 /* ---------------------------------------------------------------------------------------------
  * Turn notifications & sound cues

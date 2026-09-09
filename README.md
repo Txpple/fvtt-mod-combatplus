@@ -1,6 +1,6 @@
 # Combat Plus
 
-Quality-of-life combat automation for Foundry VTT. Eight independent features, each behind
+Quality-of-life combat automation for Foundry VTT. Nine independent features, each behind
 its own setting in **Game Settings → Configure Settings → Combat Plus**:
 
 - **Combat Music** — when combat starts, whatever is playing is snapshotted and silenced, and
@@ -21,16 +21,20 @@ its own setting in **Game Settings → Configure Settings → Combat Plus**:
   token.
 - **Select Combatant** — when a combatant you own starts its turn, its token is selected
   automatically.
-- **Automatically Set Defeated** — when an in-combat actor's HP reaches 0, its combatant is
-  marked defeated and the dead overlay stamped; healed back above 0, both are cleared. The
-  "NPC Zero HP" mode leaves player characters to their death saves; out-of-combat tokens are
-  never touched.
+- **Auto-Defeated: NPCs / PCs** — when an actor's HP reaches 0, the dead overlay is stamped
+  (and its combatant marked defeated if it is in a fight); healed back above 0, both are
+  cleared. One switch per side, so turning off the PC half leaves player characters to their
+  death saves. No combat is required — a creature dead on the practice field is just as dead.
 - **Combat Turn Notification** — "your turn" and "next up" messages for players (with
   `{{combatant.name}}` templates), either as normal notifications or a large screen banner
   with configurable font size, plus sound cues for next turn / current turn / new round at a
   shared volume. Sound files are chosen per cue — leave a file blank to keep that cue silent.
   GM clients are never notified (the tracker already tells the GM everything); the new-round
   sound plays for everyone.
+- **Confirm Roll Visibility Changes** — the roll-visibility buttons (public / private GM /
+  blind / self / in-character) sit directly under the chat box, one stray pixel from where the
+  cursor already is, and a misclick silently reroutes every roll that follows. With this on
+  (the default), the click asks first, and the mode only changes if you confirm.
 
 Pan/select/clear act on the client that **owns** the combatant: players get them on their own
 turns; the GM (who owns everything) follows every turn — the desired follow-the-action
@@ -38,8 +42,11 @@ behavior.
 
 ## Compatibility
 
-Everything rides document-level hooks (`preUpdateCombat`, `updateCombat`, `deleteCombat`) —
-no combat-tracker UI is touched. Replacement trackers such as **Carousel Combat Tracker**
+Every combat feature rides document-level hooks (`preUpdateCombat`, `updateCombat`,
+`deleteCombat`) — no combat-tracker UI is touched. (The roll-visibility guard is the one
+UI-side feature: it listens for clicks on core's own chat controls, matching both the v13
+`#roll-privacy` / `core.rollMode` plumbing and its v14 `#message-modes` / `core.messageMode`
+replacement.) Replacement trackers such as **Carousel Combat Tracker**
 work unchanged: their begin/next-turn buttons funnel into the same Combat document updates
 these hooks observe (and the initiative gate vetoes).
 
