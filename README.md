@@ -1,65 +1,97 @@
-# Combat Plus
+# Open Roll 5e: Combat Plus
 
-Quality-of-life combat automation for Foundry VTT. Nine independent features, each behind
-its own setting in **Game Settings → Configure Settings → Combat Plus**:
+A Foundry VTT module that automates the small chores of running a fight. It plays combat music and
+restores what was playing before, holds combat until everyone has rolled initiative, keeps players
+from moving out of turn, marks creatures defeated at 0 HP, tells players when they are up, follows
+the active combatant on its owner's screen, and asks before a stray click changes who can see your
+rolls. Each feature has its own setting and works on its own.
 
-- **Combat Music** — when combat starts, whatever is playing is snapshotted and silenced, and
-  the configured combat playlist (or a single track from it) starts. When the fight ends, the
-  snapshot resumes exactly what was playing before. Pick the playlist/track with the
-  **Choose Combat Music** button. The snapshot survives a mid-combat reload; playback is
-  driven by the active GM's client only.
-- **No Combat Without Initiative** — combat refuses to begin while any non-defeated combatant
-  still hasn't rolled initiative, and the warning names the stragglers.
-- **Block Out of Turn Movement** — while a combat is running, players can only move a token
-  during that token's turn; blocked moves get a warning naming the token. The GM is never
-  blocked, and tokens only lock once combat has actually started (round 1+), so pre-fight
-  setup stays free. An extra checkbox also locks player-owned tokens that aren't part of the
-  fight.
-- **Clear Targets After Turn** — when the turn of a combatant you own ends, your targets are
-  cleared automatically.
-- **Pan to Combatant** — when a combatant you own starts its turn, the camera pans to its
-  token.
-- **Select Combatant** — when a combatant you own starts its turn, its token is selected
-  automatically.
-- **Auto-Defeated: NPCs / PCs** — when an actor's HP reaches 0, the dead overlay is stamped
-  (and its combatant marked defeated if it is in a fight); healed back above 0, both are
-  cleared. One switch per side, so turning off the PC half leaves player characters to their
-  death saves. No combat is required — a creature dead on the practice field is just as dead.
-- **Combat Turn Notification** — "your turn" and "next up" messages for players (with
-  `{{combatant.name}}` templates), either as normal notifications or a large screen banner
-  with configurable font size, plus sound cues for next turn / current turn / new round at a
-  shared volume. Sound files are chosen per cue — leave a file blank to keep that cue silent.
-  GM clients are never notified (the tracker already tells the GM everything); the new-round
-  sound plays for everyone.
-- **Confirm Roll Visibility Changes** — the roll-visibility buttons (public / private GM /
-  blind / self / in-character) sit directly under the chat box, one stray pixel from where the
-  cursor already is, and a misclick silently reroutes every roll that follows. With this on
-  (the default), the click asks first, and the mode only changes if you confirm.
+## How it works
 
-Pan/select/clear act on the client that **owns** the combatant: players get them on their own
-turns; the GM (who owns everything) follows every turn — the desired follow-the-action
-behavior.
-
-## Compatibility
-
-Every combat feature rides document-level hooks (`preUpdateCombat`, `updateCombat`,
-`deleteCombat`) — no combat-tracker UI is touched. (The roll-visibility guard is the one
-UI-side feature: it listens for clicks on core's own chat controls, matching both the v13
-`#roll-privacy` / `core.rollMode` plumbing and its v14 `#message-modes` / `core.messageMode`
-replacement.) Replacement trackers such as **Carousel Combat Tracker**
-work unchanged: their begin/next-turn buttons funnel into the same Combat document updates
-these hooks observe (and the initiative gate vetoes).
-
-Compatibility: Foundry v13+ (verified on v14).
+- **Combat features ride the Combat document, not the tracker.** They watch combat updates rather
+  than the tracker's buttons, so replacement trackers such as Carousel Combat Tracker work
+  unchanged.
+- **World-wide changes run on one client.** Combat music and defeated marking are carried out by
+  the active GM's client, so nothing happens twice.
+- **Per-player behaviour runs on the owner's client.** Turn messages, target clearing, panning and
+  selection happen for whoever owns the combatant. The GM owns everything, so the GM follows every
+  turn.
+- **Settings group into sections** (Battle Music, Combat Workflows, Combat Turn Notification, Chat
+  & Rolls), and options that depend on a switch grey out while it is off.
 
 ## Installation
 
-Install via manifest URL:
+Paste the manifest URL into Foundry's *Install Module* dialog:
 
 ```
 https://github.com/Txpple/fvtt-mod-combatplus/releases/latest/download/module.json
 ```
 
+Requires Foundry VTT v13 or v14. Auto-Defeated reads dnd5e hit points; the other features work with
+any system.
+
+## Combat music
+
+When a combat begins, whatever is playing is noted and stopped, and the chosen combat playlist
+starts, either a single track or the whole playlist. When the last running combat is deleted, or a
+combat is reset to round 0, the combat music stops and the earlier music resumes. Pick the playlist
+and track with the **Choose Combat Music** button in the settings. The record of what was playing is
+saved in the world, so a reload mid-fight still brings the right music back.
+
+## Combat workflows
+
+- **No Combat Without Initiative.** Combat will not begin while any combatant who is not defeated
+  still has no initiative. The warning names who is missing.
+- **Block Out of Turn Movement.** Once a combat has started, players can move a token only on that
+  token's turn; other moves are refused with a warning. Setup before round 1 stays free, and the GM
+  is never blocked. A second switch also locks player tokens on the scene that are not in the
+  fight. The check runs on the player's own client, so it is a courtesy rail, not enforcement.
+- **Auto-Defeated: NPCs / PCs.** When an actor's HP reaches 0 it gets the dead overlay, and any
+  combatant for it is marked defeated; healing above 0 clears both. No combat is needed. One switch
+  per side, so turning off PCs leaves player characters to their death saves.
+- **Clear Targets After Turn.** When the turn of a combatant you own ends, your targets are cleared.
+- **Pan to Combatant** and **Select Combatant.** When a combatant you own starts its turn, the
+  camera pans to its token and the token is selected.
+
+## Turn notifications
+
+Players see a "your turn" message when their combatant's turn starts and a "next up" message when it
+is next. Both texts are editable, and `{{combatant.name}}` is replaced with the combatant's name. They
+show as normal notifications or, with **Large Size**, as a banner across the screen at a font size you
+choose.
+
+Three sound cues are available: next turn, current turn and new round, at a shared volume. Each cue
+plays only when its file is set. GM clients get no turn messages or turn sounds, since the tracker
+already tells the GM everything; the new-round sound plays for everyone.
+
+## Confirm roll visibility
+
+The roll visibility buttons (public, private GM, blind, self) sit right under the chat box, and a
+misclick quietly changes where every later roll goes. With this setting on, clicking one asks first,
+and the mode changes only if you confirm. Enter or Escape keeps the current mode.
+
+## Settings
+
+*Game Settings → Configure Settings → Open Roll 5e: Combat Plus.*
+
+| Setting | Default | What it does |
+| --- | --- | --- |
+| Combat Music | Off | Swaps in the combat playlist for the fight and restores the earlier music after. |
+| Choose Combat Music | | Picks the playlist and, optionally, one track. |
+| No Combat Without Initiative | Off | Holds round 1 until everyone has rolled. |
+| Auto-Defeated: NPCs | On | Dead overlay and defeated mark for NPCs at 0 HP. |
+| Auto-Defeated: PCs | On | The same for player characters. |
+| Block Out of Turn Movement | Off | Players move only on their token's turn. |
+| Block Out of Turn Movement: Non-Combatants | Off | Also locks player tokens not in the fight. |
+| Clear Targets After Turn | Off | Clears your targets when your turn ends. |
+| Pan to Combatant | Off | Pans to your combatant at the start of its turn. |
+| Select Combatant | Off | Selects your combatant's token at the start of its turn. |
+| Next Up / Your Turn notifications and messages | Off | Player turn messages, with editable text. |
+| Large Size / Large Font Size | Off / 80 | Shows turn messages as a screen banner. |
+| Next Turn / Current Turn / New Round Sound, and their files | On, no file | Sound cues; a blank file is silent. |
+| Volume | 60 | Volume of the sound cues. |
+| Confirm Roll Visibility Changes | On | Asks before the roll visibility mode changes. |
+
 ## License
 
-MIT
+MIT. See [LICENSE](LICENSE).
