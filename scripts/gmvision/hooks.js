@@ -1,6 +1,6 @@
 /**
- * GM Vision's canvas and UI hooks. index.js registers every export here as a hook of the same
- * name, on a GM client with a canvas only.
+ * GM Vision's canvas and UI hooks. index.js registers each export as the hook of the same name,
+ * on a GM client with a canvas only.
  *
  * Ported from GM Vision 2.0.5 (scripts/hooks.mjs), https://github.com/dev7355608/gm-vision
  * Copyright (c) 2023 dev7355608. MIT License; the full notice is in this module's LICENSE.

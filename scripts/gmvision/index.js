@@ -10,7 +10,9 @@
  * token controls joins the keybinding and the lighting button's right-click; and nothing is
  * installed while the gm-vision module itself is active, so the token class is never mixed twice.
  */
-import * as hooks from "./hooks.js";
+import {
+  drawCanvasDarknessEffects, drawCanvasVisibility, getSceneControlButtons, renderSceneControls, sightRefresh
+} from "./hooks.js";
 import TokenMixin from "./token.js";
 import VisualEffectsMaskingFilterMixin from "./visual-effects-masking-filter.js";
 import { registerKeybindings } from "./keybindings.js";
@@ -46,6 +48,12 @@ export function registerGMVision({ moduleId, title, enabled }) {
     CONFIG.Token.objectClass = TokenMixin(CONFIG.Token.objectClass);
     CONFIG.Canvas.visualEffectsMaskingFilter = VisualEffectsMaskingFilterMixin(CONFIG.Canvas.visualEffectsMaskingFilter);
 
-    for (const [name, fn] of Object.entries(hooks)) Hooks.on(name, fn);
+    // Each hook by name, not looped over the exports, so a search for a hook name (and the family's
+    // upstream watch) finds every one this code depends on.
+    Hooks.on("drawCanvasVisibility", drawCanvasVisibility);
+    Hooks.on("sightRefresh", sightRefresh);
+    Hooks.on("drawCanvasDarknessEffects", drawCanvasDarknessEffects);
+    Hooks.on("renderSceneControls", renderSceneControls);
+    Hooks.on("getSceneControlButtons", getSceneControlButtons);
   });
 }
