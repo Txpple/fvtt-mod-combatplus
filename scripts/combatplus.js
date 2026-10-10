@@ -1,7 +1,7 @@
 /**
  * Combat Plus — quality-of-life combat automation.
  *
- * Nine independent features, each behind its own world setting (Game Settings → Configure
+ * Ten independent features, each behind its own world setting (Game Settings → Configure
  * Settings → Combat Plus):
  *
  *   - Combat Music: when combat starts, whatever is currently playing is snapshotted and
@@ -33,6 +33,10 @@
  *   - Confirm Roll Visibility: the roll-visibility buttons (public / private GM / blind / self /
  *     in-character) sit directly under the chat box, where a stray click silently reroutes every
  *     later roll. The click is intercepted and applied only once confirmed.
+ *   - GM Vision: a GM-only mode that brightens the scene, lifts the fog and shows every token,
+ *     toggled by Ctrl+G, a token-controls tool or a right-click on the lighting control. Ported
+ *     from dev7355608's GM Vision (MIT) into ./gmvision/; the switch is read at init, so it takes
+ *     a reload, and the port stays out while the gm-vision module itself is active.
  *
  * Compatibility: every combat feature rides document-level hooks (preUpdateCombat, updateCombat,
  * deleteCombat) — no combat-tracker DOM is touched, so replacement trackers like Carousel
@@ -43,6 +47,8 @@
  * per client) rather than trusting Combat#previous, whose maintenance across non-initiating
  * clients has shifted between core versions.
  */
+
+import { registerGMVision } from "./gmvision/index.js";
 
 const MODULE_ID = "fvtt-mod-combatplus";
 const TITLE = "Combat Plus";
@@ -74,6 +80,7 @@ const S = {
   newRoundSoundPath: "newRoundSoundPath",
   soundVolume: "soundVolume",
   confirmRollVisibility: "confirmRollVisibility",
+  gmVision: "gmVision",
   resumeState: "resumeState"
 };
 
@@ -341,12 +348,21 @@ Hooks.once("init", () => {
     range: { min: 0, max: 100, step: 5 }
   });
 
-  // Registered last so it lands under its own header at the bottom of the sheet.
+  // The last two each land under their own header at the bottom of the sheet.
   game.settings.register(MODULE_ID, S.confirmRollVisibility, {
     name: "Confirm Roll Visibility Changes",
     hint: "Clicking one of the roll visibility buttons under the chat box (public / private GM / blind / self) asks for confirmation first. They sit right where the cursor already is, and a misclick silently reroutes every roll that follows.",
     scope: "world", config: true, type: Boolean, default: true
   });
+
+  // Read here, at init, because the keybinding can only be registered now and the token class is
+  // mixed at setup; so the switch takes a reload.
+  game.settings.register(MODULE_ID, S.gmVision, {
+    name: "GM Vision",
+    hint: "Adds a GM-only mode that brightens the scene, lifts the fog of war and shows every token, hatching the ones your tokens could not see. Toggle it with Ctrl+G, the lightbulb tool in the token controls, or a right-click on the lighting controls. Players see no change. Stays off while the separate GM Vision module is active.",
+    scope: "world", config: true, type: Boolean, default: false, requiresReload: true
+  });
+  registerGMVision({ moduleId: MODULE_ID, title: TITLE, enabled: setting(S.gmVision) });
 
   // Hidden plumbing: the music picker's storage and the pre-combat playback snapshot.
   game.settings.register(MODULE_ID, S.combatPlaylist, { scope: "world", config: false, type: String, default: "" });
@@ -389,6 +405,7 @@ Hooks.on("renderSettingsConfig", (app, element) => {
   addDivider(input(S.requireInitiative), "Combat Workflows");
   addDivider(input(S.showNextUp), "Combat Turn Notification");
   addDivider(input(S.confirmRollVisibility), "Chat & Rolls");
+  addDivider(input(S.gmVision), "GM Vision");
 
   // Dependency rules: field → is it relevant, given the toggles' CURRENT (unsaved) state?
   const on = key => !!input(key)?.checked;

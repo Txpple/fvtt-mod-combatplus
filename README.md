@@ -3,8 +3,9 @@
 A Foundry VTT module that automates the small chores of running a fight. It plays combat music and
 restores what was playing before, holds combat until everyone has rolled initiative, keeps players
 from moving out of turn, marks creatures defeated at 0 HP, tells players when they are up, follows
-the active combatant on its owner's screen, and asks before a stray click changes who can see your
-rolls. Each feature has its own setting and works on its own.
+the active combatant on its owner's screen, asks before a stray click changes who can see your
+rolls, and gives the GM a mode that lifts the fog and shows every token. Each feature has its own
+setting and works on its own.
 
 ## How it works
 
@@ -17,7 +18,7 @@ rolls. Each feature has its own setting and works on its own.
   selection happen for whoever owns the combatant. The GM owns everything, so the GM follows every
   turn.
 - **Settings group into sections** (Battle Music, Combat Workflows, Combat Turn Notification, Chat
-  & Rolls), and options that depend on a switch grey out while it is off.
+  & Rolls, GM Vision), and options that depend on a switch grey out while it is off.
 
 ## Installation
 
@@ -70,6 +71,30 @@ The roll visibility buttons (public, private GM, blind, self) sit right under th
 misclick quietly changes where every later roll goes. With this setting on, clicking one asks first,
 and the mode changes only if you confirm. Enter or Escape keeps the current mode.
 
+## GM Vision
+
+A mode for the GM's own screen. While it is on:
+
+- the scene is brightened and its darkness halved, so a night map reads like day;
+- the fog of war is lifted;
+- every token shows, even one the tokens you control could not see. Those tokens carry a hatched
+  overlay, so you can still tell what your tokens would miss.
+
+Toggle it with **Ctrl+G** (rebindable under *Configure Controls*), with the lightbulb tool in the
+token controls, or by right-clicking the lighting controls button, whose bulb turns solid while the
+mode is on. A macro can flip it too:
+
+```js
+game.settings.set("fvtt-mod-combatplus", "gmVisionActive", !game.settings.get("fvtt-mod-combatplus", "gmVisionActive"));
+```
+
+Players see no change: it runs on GM clients only. While the setting is on, tokens hidden from
+players carry the hatch on the GM's screen whether the mode is on or off. Turning the setting on or
+off takes a reload. If the separate GM Vision module is active, Combat Plus leaves the job to it.
+
+GM Vision is ported from [GM Vision](https://github.com/dev7355608/gm-vision) by dev7355608, under
+the MIT License; its notice is kept in [LICENSE](LICENSE).
+
 ## Settings
 
 *Game Settings → Configure Settings → Open Roll 5e: Combat Plus.*
@@ -91,12 +116,14 @@ and the mode changes only if you confirm. Enter or Escape keeps the current mode
 | Next Turn / Current Turn / New Round Sound, and their files | On, no file | Sound cues; a blank file is silent. |
 | Volume | 60 | Volume of the sound cues. |
 | Confirm Roll Visibility Changes | On | Asks before the roll visibility mode changes. |
+| GM Vision | Off | Adds the GM's brighten, lift-the-fog, show-every-token mode. Takes a reload. |
 
 ## Development
 
-There is no build step: the module is one plain ES module, `scripts/combatplus.js`, loaded
-straight from the repo. Releases: bump `version` and the `download` URL in `module.json` together,
-tag `vX.Y.Z`, and publish a zip of the module with the manifest as a GitHub release.
+There is no build step: the module is plain ES modules loaded straight from the repo,
+`scripts/combatplus.js` and the GM Vision port in `scripts/gmvision/`. Releases: bump `version`
+and the `download` URL in `module.json` together, tag `vX.Y.Z`, and publish a zip of the module
+with the manifest as a GitHub release.
 
 <!-- openroll5e:family -->
 ## Part of Open Roll 5e
@@ -126,4 +153,4 @@ author's design for one table, shared because it might suit yours. How they fit 
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+MIT. See [LICENSE](LICENSE). Includes code from GM Vision, copyright (c) 2023 dev7355608, MIT.
