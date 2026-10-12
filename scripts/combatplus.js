@@ -1,7 +1,7 @@
 /**
  * Combat Plus — quality-of-life combat automation.
  *
- * Ten independent features, each behind its own world setting (Game Settings → Configure
+ * Eleven independent features, each behind its own world setting (Game Settings → Configure
  * Settings → Combat Plus):
  *
  *   - Combat Music: when combat starts, whatever is currently playing is snapshotted and
@@ -33,6 +33,8 @@
  *   - Confirm Roll Visibility: the roll-visibility buttons (public / private GM / blind / self /
  *     in-character) sit directly under the chat box, where a stray click silently reroutes every
  *     later roll. The click is intercepted and applied only once confirmed.
+ *   - Portrait View: a player double-clicking a token they have no permission on gets its
+ *     portrait in core's image popout, under the token's name, instead of nothing. On by default.
  *   - GM Vision: a GM-only mode that brightens the scene, lifts the fog and shows every token,
  *     toggled by Ctrl+G, a token-controls tool or a right-click on the lighting control. Ported
  *     from dev7355608's GM Vision (MIT) into ./gmvision/; the switch is read at init, so it takes
@@ -80,6 +82,7 @@ const S = {
   newRoundSoundPath: "newRoundSoundPath",
   soundVolume: "soundVolume",
   confirmRollVisibility: "confirmRollVisibility",
+  portraitView: "portraitView",
   gmVision: "gmVision",
   resumeState: "resumeState"
 };
@@ -348,10 +351,16 @@ Hooks.once("init", () => {
     range: { min: 0, max: 100, step: 5 }
   });
 
-  // The last two each land under their own header at the bottom of the sheet.
+  // The last three each land under their own header at the bottom of the sheet.
   game.settings.register(MODULE_ID, S.confirmRollVisibility, {
     name: "Confirm Roll Visibility Changes",
     hint: "Clicking one of the roll visibility buttons under the chat box (public / private GM / blind / self) asks for confirmation first. They sit right where the cursor already is, and a misclick silently reroutes every roll that follows.",
+    scope: "world", config: true, type: Boolean, default: true
+  });
+
+  game.settings.register(MODULE_ID, S.portraitView, {
+    name: "Portrait View for Players",
+    hint: "A player who double-clicks a hostile creature, or any token they have no permission on, sees its portrait under the token's name instead of nothing. No sheet, no stats, and no ownership change; a renamed token keeps its disguise.",
     scope: "world", config: true, type: Boolean, default: true
   });
 
@@ -405,6 +414,7 @@ Hooks.on("renderSettingsConfig", (app, element) => {
   addDivider(input(S.requireInitiative), "Combat Workflows");
   addDivider(input(S.showNextUp), "Combat Turn Notification");
   addDivider(input(S.confirmRollVisibility), "Chat & Rolls");
+  addDivider(input(S.portraitView), "Players");
   addDivider(input(S.gmVision), "GM Vision");
 
   // Dependency rules: field → is it relevant, given the toggles' CURRENT (unsaved) state?
@@ -481,6 +491,86 @@ Hooks.once("ready", () => document.addEventListener("click", event => {
   event.stopImmediatePropagation();
   void confirmRollVisibility(key, modes, current, mode);
 }, { capture: true }));
+
+/* ---------------------------------------------------------------------------------------------
+ * Portrait view — a player who double-clicks a token they have no permission on gets the
+ * creature's portrait in core's image popout, titled with the TOKEN's name (a token renamed to
+ * disguise its creature stays disguised), instead of nothing. Ownership is never touched.
+ *
+ * Core gates the event, not just the sheet: the interaction manager wires
+ * `clickLeft2: this._canView`, and Token#_canView ends in
+ * `this.actor?.testUserPermission(user, "LIMITED")`, so without permission _onClickLeft2 never
+ * fires. Both are wrapped, on the prototype of whatever Token class is there at setup (GM Vision's
+ * mixin subclasses it, Loot Shelf patches it too; every wrap defers to the one beneath it).
+ *
+ * Loot Shelf widens _canView for its shop and chest tokens so their sheets open; while it is
+ * active, those are left to it (detected by its flags, never required).
+ * ------------------------------------------------------------------------------------------- */
+
+const LOOT_SHELF_ID = "fvtt-mod-lootshelf";
+
+/** Does this token get the portrait popout for this user instead of a sheet? */
+function wantsPortrait(token, user) {
+  if (user.isGM || !setting(S.portraitView)) return false;
+  const actor = token.actor;
+  if (!actor || actor.testUserPermission(user, "LIMITED")) return false;
+  if (token.document.disposition === CONST.TOKEN_DISPOSITIONS.SECRET) return false;
+  if (game.modules.get(LOOT_SHELF_ID)?.active) {
+    const shelf = actor.flags?.[LOOT_SHELF_ID];
+    if (shelf?.merchant?.enabled || shelf?.container?.enabled) return false;
+  }
+  return true;
+}
+
+/** Open (or bring forward) the portrait popout for a token. */
+function showPortrait(token) {
+  const id = `combatplus-portrait-${token.document.id}`;
+  const open = foundry.applications.instances.get(id);
+  if (open) return void open.bringToFront();
+  new foundry.applications.apps.ImagePopout({
+    id,
+    src: token.actor.img,
+    showTitle: true, // no uuid: the title must not be hidden for lack of permission on the actor
+    window: { title: token.document.name || token.actor.name }
+  }).render({ force: true });
+}
+
+Hooks.once("setup", () => {
+  const proto = CONFIG.Token?.objectClass?.prototype;
+  const canView = proto?._canView;
+  const clickLeft2 = proto?._onClickLeft2;
+  if (!canView || !clickLeft2) {
+    console.error(`${TITLE} | Token#_canView or _onClickLeft2 not found; Portrait View is off.`);
+    return;
+  }
+
+  proto._canView = function (user, event) {
+    const allowed = canView.call(this, user, event);
+    if (allowed) return allowed;
+    try {
+      // Core's own refusals that have nothing to do with permission still stand.
+      if (!this.layer.active || this.layer._draggedToken || canvas.regions?._placementContext) return allowed;
+      if (canvas.controls.ruler?.active) return allowed;
+      if (CONFIG.Canvas.rulerClass?.canMeasure && event?.type === "pointerdown") return allowed;
+      if (wantsPortrait(this, user)) return true;
+    } catch (err) {
+      console.error(`${TITLE} | portrait view check failed`, err);
+    }
+    return allowed;
+  };
+
+  proto._onClickLeft2 = function (event) {
+    try {
+      if (wantsPortrait(this, game.user)) {
+        if (!this._propagateLeftClick(event)) event.stopPropagation();
+        return void showPortrait(this);
+      }
+    } catch (err) {
+      console.error(`${TITLE} | portrait view failed`, err);
+    }
+    return clickLeft2.call(this, event);
+  };
+});
 
 /* ---------------------------------------------------------------------------------------------
  * Turn notifications & sound cues

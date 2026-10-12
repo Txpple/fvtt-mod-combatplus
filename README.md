@@ -4,7 +4,8 @@ A Foundry VTT module that automates the small chores of running a fight. It play
 restores what was playing before, holds combat until everyone has rolled initiative, keeps players
 from moving out of turn, marks creatures defeated at 0 HP, tells players when they are up, follows
 the active combatant on its owner's screen, asks before a stray click changes who can see your
-rolls, and gives the GM a mode that lifts the fog and shows every token. Each feature has its own
+rolls, shows players a creature's portrait when they double-click a token they don't own, and
+gives the GM a mode that lifts the fog and shows every token. Each feature has its own
 setting and works on its own.
 
 ## How it works
@@ -18,7 +19,7 @@ setting and works on its own.
   selection happen for whoever owns the combatant. The GM owns everything, so the GM follows every
   turn.
 - **Settings group into sections** (Battle Music, Combat Workflows, Combat Turn Notification, Chat
-  & Rolls, GM Vision), and options that depend on a switch grey out while it is off.
+  & Rolls, Players, GM Vision), and options that depend on a switch grey out while it is off.
 
 ## Installation
 
@@ -71,6 +72,20 @@ The roll visibility buttons (public, private GM, blind, self) sit right under th
 misclick quietly changes where every later roll goes. With this setting on, clicking one asks first,
 and the mode changes only if you confirm. Enter or Escape keeps the current mode.
 
+## Portrait view
+
+A player who double-clicks a hostile creature, or any token they have no permission on, gets its
+portrait in Foundry's image window, under the token's name. Without this, the double-click does
+nothing, and the only way to show a portrait is to give players Limited on the actor, which opens
+its limited sheet, biography included.
+
+- No ownership changes, no sheet, no stats.
+- The title is the token's name, not the actor's, so a token renamed "Hooded figure" stays a
+  hooded figure.
+- Players with Limited or better still get the sheet. Tokens with the secret disposition do
+  nothing.
+- With Loot Shelf active, its shop and chest tokens still open their shelves.
+
 ## GM Vision
 
 A mode for the GM's own screen. While it is on:
@@ -116,6 +131,7 @@ the MIT License; its notice is kept in [LICENSE](LICENSE).
 | Next Turn / Current Turn / New Round Sound, and their files | On, no file | Sound cues; a blank file is silent. |
 | Volume | 60 | Volume of the sound cues. |
 | Confirm Roll Visibility Changes | On | Asks before the roll visibility mode changes. |
+| Portrait View for Players | On | Double-clicking a token you have no permission on shows its portrait. |
 | GM Vision | Off | Adds the GM's brighten, lift-the-fog, show-every-token mode. Takes a reload. |
 
 ## Development
