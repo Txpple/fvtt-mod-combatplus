@@ -50,7 +50,11 @@ saved in the world, so a reload mid-fight still brings the right music back.
   fight. The check runs on the player's own client, so it is a courtesy rail, not enforcement.
 - **Auto-Defeated: NPCs / PCs.** When an actor's HP reaches 0 it gets the dead overlay, and any
   combatant for it is marked defeated; healing above 0 clears both. No combat is needed. One switch
-  per side, so turning off PCs leaves player characters to their death saves.
+  per side, so turning off PCs leaves player characters to their death saves. dnd5e's own *Apply
+  Downed Conditions* and By the Books write the same Dead status; who writes what, and the settings
+  that agree with the book (with dnd5e's set to all, turn *Auto-Defeated: PCs* off), are written once
+  for the family in
+  [contracts/dead.md](https://github.com/Txpple/fvtt-suite-openroll5e/blob/main/contracts/dead.md).
 - **Clear Targets After Turn.** When the turn of a combatant you own ends, your targets are cleared.
 - **Pan to Combatant** and **Select Combatant.** When a combatant you own starts its turn, the
   camera pans to its token and the token is selected.
