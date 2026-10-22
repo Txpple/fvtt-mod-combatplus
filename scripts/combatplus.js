@@ -22,10 +22,10 @@
  *   - Pan to Combatant / Select Combatant: when a combatant you own starts its turn, your
  *     client pans to and/or selects its token. The GM owns everything, so for the GM this is
  *     every combatant — which is the desired follow-the-action behavior.
- *   - Automatically Set Defeated: when an in-combat actor's HP hits 0, its combatant is marked
- *     defeated and the dead overlay stamped — cleared again if it's healed back up. NPCs-only
- *     mode leaves player characters to their death saves. Driven by the active GM's client;
- *     deliberately scoped to actors that actually have a combatant somewhere.
+ *   - Automatically Set Defeated: when an NPC's HP hits 0, its combatant is marked defeated
+ *     and the dead overlay stamped — cleared again if it's healed back up. Player characters
+ *     are never touched (at 0 HP they are dying, and their death saves decide). Driven by the
+ *     active GM's client.
  *   - Turn Notifications: player-facing "your turn" / "next up" messages ({{combatant.name}}
  *     templates) as normal notifications or a large screen banner with configurable font size,
  *     plus per-cue sound effects (blank path = silent) at a shared volume. GM clients stay
@@ -67,7 +67,6 @@ const S = {
   panToCombatant: "panToCombatant",
   selectCombatant: "selectCombatant",
   autoDefeatedNPCs: "autoDefeatedNPCs",
-  autoDefeatedPCs: "autoDefeatedPCs",
   showNextUp: "showNextUp",
   nextUpMessage: "nextUpMessage",
   showYourTurn: "showYourTurn",
@@ -223,19 +222,13 @@ Hooks.once("init", () => {
     scope: "world", config: true, type: Boolean, default: false
   });
 
-  // Split from the old three-choice `autoDefeated` at v1.3.0 (user call 2026-08-16): one
-  // switch per side, and the overlay no longer requires a combat — a creature dead on the
-  // practice field is just as dead as one dead in initiative. Both default ON (the user's
-  // explicit call for PCs; continuity for NPCs).
+  // NPCs only: a player character at 0 HP is dying, not dead — dnd5e's Apply Downed Conditions
+  // and By the Books' death saves play that out, and this module never writes a status on one
+  // (the family's rule: the suite's contracts/dead.md). The overlay does not require a combat —
+  // a creature dead on the practice field is just as dead as one dead in initiative.
   game.settings.register(MODULE_ID, S.autoDefeatedNPCs, {
     name: "Auto-Defeated: NPCs",
-    hint: "When an NPC's hit points reach 0, stamp the dead overlay (and mark its combatant defeated if it is in a fight) — cleared again if it is healed back up. Works in and out of combat.",
-    scope: "world", config: true, type: Boolean, default: true
-  });
-
-  game.settings.register(MODULE_ID, S.autoDefeatedPCs, {
-    name: "Auto-Defeated: PCs",
-    hint: "The same for player characters at 0 HP. By the book a PC at 0 is dying, not dead — this table stamps the overlay anyway (turn this off to leave PCs to their death saves).",
+    hint: "When an NPC's hit points reach 0, stamp the dead overlay (and mark its combatant defeated if it is in a fight) — cleared again if it is healed back up. Works in and out of combat. Player characters are never touched: at 0 HP they are dying, and their death saves decide.",
     scope: "world", config: true, type: Boolean, default: true
   });
 
@@ -615,18 +608,17 @@ function playCue(enableKey, pathKey) {
 }
 
 /* ---------------------------------------------------------------------------------------------
- * Automatically set defeated — active-GM client stamps the dead overlay at 0 HP (and clears
- * it on heal), per side. Combatants additionally get the tracker's defeated mark; being in
- * a combat is NOT required for the overlay (v1.3.0, user call — the old combat-only scope
- * is why a practice dummy could die without an icon).
+ * Automatically set defeated — active-GM client stamps the dead overlay on an NPC at 0 HP (and
+ * clears it on heal). Combatants additionally get the tracker's defeated mark; being in a combat
+ * is NOT required for the overlay (the old combat-only scope is why a practice dummy could die
+ * without an icon). A player character is never touched: at 0 HP it is dying, not dead.
  * ------------------------------------------------------------------------------------------- */
 
 Hooks.on("updateActor", (actor, changed) => {
   if (!isActiveGM()) return;
   const hp = foundry.utils.getProperty(changed, "system.attributes.hp.value");
   if (hp === undefined) return;
-  const isPC = actor.type === "character";
-  if (!setting(isPC ? S.autoDefeatedPCs : S.autoDefeatedNPCs)) return;
+  if (actor.type === "character" || !setting(S.autoDefeatedNPCs)) return;
 
   const defeated = hp <= 0;
   for (const combat of game.combats) {

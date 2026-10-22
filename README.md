@@ -2,7 +2,7 @@
 
 A Foundry VTT module that automates the small chores of running a fight. It plays combat music and
 restores what was playing before, holds combat until everyone has rolled initiative, keeps players
-from moving out of turn, marks creatures defeated at 0 HP, tells players when they are up, follows
+from moving out of turn, marks NPCs defeated at 0 HP, tells players when they are up, follows
 the active combatant on its owner's screen, asks before a stray click changes who can see your
 rolls, shows players a creature's portrait when they double-click a token they don't own, and
 gives the GM a mode that lifts the fog and shows every token. Each feature has its own
@@ -48,11 +48,10 @@ saved in the world, so a reload mid-fight still brings the right music back.
   token's turn; other moves are refused with a warning. Setup before round 1 stays free, and the GM
   is never blocked. A second switch also locks player tokens on the scene that are not in the
   fight. The check runs on the player's own client, so it is a courtesy rail, not enforcement.
-- **Auto-Defeated: NPCs / PCs.** When an actor's HP reaches 0 it gets the dead overlay, and any
-  combatant for it is marked defeated; healing above 0 clears both. No combat is needed. One switch
-  per side, so turning off PCs leaves player characters to their death saves. dnd5e's own *Apply
-  Downed Conditions* and By the Books write the same Dead status; who writes what, and the settings
-  that agree with the book (with dnd5e's set to all, turn *Auto-Defeated: PCs* off), are written once
+- **Auto-Defeated: NPCs.** When an NPC's HP reaches 0 it gets the dead overlay, and any combatant
+  for it is marked defeated; healing above 0 clears both. No combat is needed. Player characters are
+  never touched: at 0 HP a character is dying, not dead, and dnd5e's own *Apply Downed Conditions*
+  and By the Books' death saves play that out. Who writes the Dead status, and when, is written once
   for the family in
   [contracts/dead.md](https://github.com/Txpple/fvtt-suite-openroll5e/blob/main/contracts/dead.md).
 - **Clear Targets After Turn.** When the turn of a combatant you own ends, your targets are cleared.
@@ -123,8 +122,7 @@ the MIT License; its notice is kept in [LICENSE](LICENSE).
 | Combat Music | Off | Swaps in the combat playlist for the fight and restores the earlier music after. |
 | Choose Combat Music | | Picks the playlist and, optionally, one track. |
 | No Combat Without Initiative | Off | Holds round 1 until everyone has rolled. |
-| Auto-Defeated: NPCs | On | Dead overlay and defeated mark for NPCs at 0 HP. |
-| Auto-Defeated: PCs | On | The same for player characters. |
+| Auto-Defeated: NPCs | On | Dead overlay and defeated mark for NPCs at 0 HP. Player characters are never touched. |
 | Block Out of Turn Movement | Off | Players move only on their token's turn. |
 | Block Out of Turn Movement: Non-Combatants | Off | Also locks player tokens not in the fight. |
 | Clear Targets After Turn | Off | Clears your targets when your turn ends. |
