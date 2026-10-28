@@ -1,7 +1,7 @@
 /**
  * Combat Plus — quality-of-life combat automation.
  *
- * Eleven independent features, each behind its own world setting (Game Settings → Configure
+ * Twelve independent features, each behind its own world setting (Game Settings → Configure
  * Settings → Combat Plus):
  *
  *   - Combat Music: when combat starts, whatever is currently playing is snapshotted and
@@ -11,6 +11,9 @@
  *     the table in battle music. Playback is executed by the active GM's client only.
  *   - No Combat Without Initiative: vetoes the round 0 → 1 update in preUpdateCombat while
  *     any non-defeated combatant still has null initiative, and names the offenders.
+ *   - Confirm Reset Initiative: Reset Initiative wipes every roll in the fight with no undo, and
+ *     core asks first only for End Combat. The tracker's menu entry (and Combat Tracker Dock's
+ *     reset button, when that module is active) asks the same way first.
  *   - Block Out of Turn Movement: while a combat is running, players can only move a token
  *     during that token's turn — the x/y/elevation update is vetoed in preUpdateToken with a
  *     warning.
@@ -40,7 +43,7 @@
  *     from dev7355608's GM Vision (MIT) into ./gmvision/; the switch is read at init, so it takes
  *     a reload, and the port stays out while the gm-vision module itself is active.
  *
- * Compatibility: every combat feature rides document-level hooks (preUpdateCombat, updateCombat,
+ * Compatibility: every combat feature but the reset confirmation rides document-level hooks (preUpdateCombat, updateCombat,
  * deleteCombat) — no combat-tracker DOM is touched, so replacement trackers like Carousel
  * Combat Tracker work unchanged: their begin/next-turn buttons funnel into the same Combat
  * document updates these hooks observe (and the initiative gate vetoes).
@@ -61,6 +64,7 @@ const S = {
   combatPlaylist: "combatPlaylist",
   combatSound: "combatSound",
   requireInitiative: "requireInitiative",
+  confirmResetInitiative: "confirmResetInitiative",
   lockMovement: "lockMovement",
   lockNonCombatants: "lockNonCombatants",
   clearTargets: "clearTargets",
@@ -220,6 +224,12 @@ Hooks.once("init", () => {
     name: "No Combat Without Initiative",
     hint: "Prevent combat from beginning until every non-defeated combatant has rolled initiative.",
     scope: "world", config: true, type: Boolean, default: false
+  });
+
+  game.settings.register(MODULE_ID, S.confirmResetInitiative, {
+    name: "Confirm Reset Initiative",
+    hint: "Reset Initiative asks for confirmation first, the way End Combat does. It clears every combatant's roll with no undo, and it sits one line from the entries used every round.",
+    scope: "world", config: true, type: Boolean, default: true
   });
 
   // NPCs only: a player character at 0 HP is dying, not dead — dnd5e's Apply Downed Conditions
@@ -483,6 +493,54 @@ Hooks.once("ready", () => document.addEventListener("click", event => {
   event.stopPropagation();
   event.stopImmediatePropagation();
   void confirmRollVisibility(key, modes, current, mode);
+}, { capture: true }));
+
+/* ---------------------------------------------------------------------------------------------
+ * Confirm reset initiative — core asks before End Combat (Combat#endCombat) but runs
+ * Combat#resetAll straight from the tracker's menu, and a stray click wipes every roll in the
+ * fight. The dialog copies core's End Combat one (the menu entry's icon, its label as the title,
+ * a modal Yes / No with No the default).
+ *
+ * Only the controls are wrapped, never Combat#resetAll itself: a script or module resetting on
+ * purpose gets no dialog. Core's control is the encounter context menu, reached through its
+ * getCombatContextOptions hook (v14 entries carry label/onClick, v13's name/callback); Combat
+ * Tracker Dock's reset button calls resetAll from its own listener, so that click is caught in
+ * the capture phase, as the roll-visibility buttons are.
+ * ------------------------------------------------------------------------------------------- */
+
+const RESET_LABEL = "COMBAT.InitiativeReset";
+const DOCK_RESET = '.combat-dock [data-action="reset"]';
+
+/** Ask, then reset. Enter or Escape keeps the rolls. */
+async function confirmResetInitiative(combat) {
+  if (!combat) return;
+  await foundry.applications.api.DialogV2.confirm({
+    window: { icon: "fa-solid fa-arrow-rotate-left", title: RESET_LABEL },
+    content: "<p>Clear every combatant's initiative? The turn order will need rolling again.</p>",
+    yes: { callback: () => combat.resetAll() },
+    modal: true
+  });
+}
+
+Hooks.on("getCombatContextOptions", (app, entries) => {
+  const entry = entries.find(e => (e.label ?? e.name) === RESET_LABEL);
+  if (!entry) return;
+  const key = typeof entry.onClick === "function" ? "onClick" : "callback";
+  const original = entry[key];
+  if (typeof original !== "function") return;
+  // The switch is read on the click, not when the menu is built, so a change needs no re-render.
+  entry[key] = (...args) => setting(S.confirmResetInitiative)
+    ? confirmResetInitiative(app.viewed)
+    : original(...args);
+});
+
+Hooks.once("ready", () => document.addEventListener("click", event => {
+  if (!setting(S.confirmResetInitiative)) return;
+  if (!event.target?.closest?.(DOCK_RESET)) return;
+  event.preventDefault();
+  event.stopPropagation();
+  event.stopImmediatePropagation();
+  void confirmResetInitiative(game.combat);
 }, { capture: true }));
 
 /* ---------------------------------------------------------------------------------------------

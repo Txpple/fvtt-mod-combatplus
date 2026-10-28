@@ -44,6 +44,10 @@ saved in the world, so a reload mid-fight still brings the right music back.
 
 - **No Combat Without Initiative.** Combat will not begin while any combatant who is not defeated
   still has no initiative. The warning names who is missing.
+- **Confirm Reset Initiative.** Reset Initiative asks first, in the same dialog Foundry shows for
+  End Combat, because a misclick wipes every roll in the fight. Enter or Escape keeps them. It covers
+  the tracker's menu and, when Combat Tracker Dock is active, the Dock's reset button. A script
+  calling the reset directly is not asked.
 - **Block Out of Turn Movement.** Once a combat has started, players can move a token only on that
   token's turn; other moves are refused with a warning. Setup before round 1 stays free, and the GM
   is never blocked. A second switch also locks player tokens on the scene that are not in the
@@ -122,6 +126,7 @@ the MIT License; its notice is kept in [LICENSE](LICENSE).
 | Combat Music | Off | Swaps in the combat playlist for the fight and restores the earlier music after. |
 | Choose Combat Music | | Picks the playlist and, optionally, one track. |
 | No Combat Without Initiative | Off | Holds round 1 until everyone has rolled. |
+| Confirm Reset Initiative | On | Asks before Reset Initiative clears the rolls. |
 | Auto-Defeated: NPCs | On | Dead overlay and defeated mark for NPCs at 0 HP. Player characters are never touched. |
 | Block Out of Turn Movement | Off | Players move only on their token's turn. |
 | Block Out of Turn Movement: Non-Combatants | Off | Also locks player tokens not in the fight. |
